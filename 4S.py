@@ -46,10 +46,10 @@ def calculate_sconfig(file_path):
     print("阳离子元素分布:")
     for element, count in element_counts.items():
         print(f"  {element}: {count} 个 ({count/total_cations:.3f})")
-    print(f"构型熵 Sconfig: {sconfig_value:.4f} J/mol·K")
-    print(f"标准化值: {sconfig_value/R:.4f} R")
+    print(f"构型熵 Sconfig: {sconfig:.4f} J/mol·K")
+    print(f"标准化值: {sconfig/R:.4f} R")
     
-    return sconfig_value
+    return sconfig
 
 # 调用函数
 if __name__ == "__main__":
