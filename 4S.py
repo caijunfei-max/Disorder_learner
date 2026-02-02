@@ -39,7 +39,11 @@ def calculate_sconfig(file_path):
         if x_i > 0:
             entropy -= x_i * np.log(x_i)   # 只对正数进行计算，避免log(0)错误
     
+<<<<<<< HEAD
     sconfig = R * entropy   # 将标准化熵值乘以理想气体常数得到实际熵值
+=======
+    sconfig_value = R * entropy   # 将标准化熵值乘以理想气体常数得到实际熵值
+>>>>>>> 0114b2556407b6a141464e080a9e11aa98e19f5c
     
     # 输出计算结果
     print(f"阳离子总数: {total_cations}")
@@ -53,4 +57,8 @@ def calculate_sconfig(file_path):
 
 # 调用函数
 if __name__ == "__main__":
+<<<<<<< HEAD
     calculate_sconfig(file_path)
+=======
+    calculate_sconfig(file_path)
+>>>>>>> 0114b2556407b6a141464e080a9e11aa98e19f5c
