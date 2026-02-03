@@ -1,7 +1,20 @@
 # Disorder\_learner
 
-<<<<<<< HEAD
-print("Hello")
+20260203
+三个test-20260202文件夹，显示三个晶胞相同，TM层内排列不同的Li1.2Mn0.54Co0.13Ni0.13O2结构的运行结果:
+
+1.读取POSCAR晶体结构，识别列表内的阳离子元素
+2.计算整个结构的组成熵（基于元素数量）
+3.分析每个阳离子位点的局域配位环境，计算构型熵（基于每个阳离子位点的近邻元素组成）
+5.输出计算结果和统计信息
+
+局域配位环境分析：
+1.使用 scipy.spatial.cKDTree搜索，设置截断半径（cutoff_radius设为3.8 Å）和c轴容差（z_tolerance设为0.2）筛选ab平面内的近邻阳离子（列表中给出元素）
+2.在ab平面内创建镜像原子，模拟结构的周期性，以得到边缘阳离子位点的邻近环境
+3.设置配位数为6（target_coordination=6），默认识别近邻6个阳离子
+
+存疑：使用 scipy.spatial.cKDTree搜索是否合适？我查询到该方法可能计算量较大
+
 =======
 For coding of the classification of disorder in cathode intralyer metals.
 该python代码用于计算输入POSCAR晶体结构构型熵（Sconfig）：
@@ -30,4 +43,3 @@ For coding of the classification of disorder in cathode intralyer metals.
 1. 首先你要修改一下这个代码，这个代码至少输入必须**能够自定义元素**， 目前这个代码只考虑了每个位点的周围元素的数量，这显然不对，根本无法考虑全部构型——按照这个情况，只要成分一样全是差不多的构型熵。**都只考虑数量了那跟构型还有什么关系？** 参考coding/test_workstation.ipynb，我用两个不同排布的结构展示的熵根本就是一个值……所以你还得自己想想怎么写这个函数（合理使用AI……不要照搬它的东西，基本上是很蠢的）
 2. 下次提交代码，不要空给一个py文件，你参考coding/test_workstation.ipynb，用jupyter lab展示一下你的运行结果。
 3. 自己构建几个无序度有差别的结构让函数读，然后运行出来把结果展示出来
->>>>>>> 0114b2556407b6a141464e080a9e11aa98e19f5c
