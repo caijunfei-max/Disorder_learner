@@ -1,13 +1,37 @@
 # Disorder_learner
 
 # 导入必要的库
+import os                                                                #os处理文件路径
+import sys                                                               #环境交互
+import glob                                                              #glob匹配目录下以POSCAR开头的文件
 import numpy as np                                                       #numpy数学计算
 from pymatgen.core import Structure                                      #pymatgen处理晶体结构
 from collections import Counter, defaultdict                             #counter, defaultdict统计元素出现次数
 from scipy.spatial import cKDTree                                        #cKDTree查找近邻原子
 from scipy.stats import entropy                                          #熵计算
 
-file_path = r"D:\github\Disorder_learner\POSCAR"                         #定义POSCAR文件路径
+# 使用os.path.join进行灵活的路径管理，兼容交互式环境和脚本运行
+try:
+    # 获取当前脚本的目录（在脚本文件中运行）
+    work_path = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    # 在Jupyter Notebook交互式环境中，使用当前工作目录
+    work_path = os.getcwd()
+    print(f"注意：在交互式环境中运行，使用当前工作目录: {work_path}")
+
+structure_dir = os.path.join(work_path, "structure_file")                 #结构文件目录
+
+def find_poscar_files(structure_dir):
+    """查找structure_file目录下所有以POSCAR开头的文件"""
+    poscar_patterns = [
+        os.path.join(structure_dir, "POSCAR*"),                           # POSCAR开头的文件作为输入结构
+    ]
+    
+    poscar_files = []
+    for pattern in poscar_patterns:
+        poscar_files.extend(glob.glob(pattern))
+    poscar_files = sorted(list(set(poscar_files)))
+    return poscar_files
 
 def calculate_sconfig(file_path, cutoff_radius=3.8, z_tolerance=0.2, target_coordination=6):
     """
@@ -17,6 +41,17 @@ def calculate_sconfig(file_path, cutoff_radius=3.8, z_tolerance=0.2, target_coor
 	target_coordination：阳离子配位数设为6，取6个近邻阳离子
 	Returns: 该POSCA结构的构型熵Sconfig
     """
+    # 从文件路径提取结构名称
+    file_name = os.path.basename(file_path)
+    struct_name = file_name.replace("POSCAR", "").replace("_", " ").strip()
+    if not struct_name:
+        struct_name = "默认结构"
+    
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        print(f"错误: 文件 {file_path} 不存在")
+        return None
+    
     # 使用pymatgen读取POSCAR文件，创建structure对象
     struct = Structure.from_file(file_path)
     
@@ -75,7 +110,7 @@ def calculate_sconfig(file_path, cutoff_radius=3.8, z_tolerance=0.2, target_coor
                 'index': i,                                                  # 位点在结构中的索引
                 'element': element,
                 'frac_coords': site.frac_coords,                             # 分数坐标
-                'coords': site.coords,                                       # 笛卡尔坐标
+                'coords': site.coords,                                       # 笛卡尔坐标,
             })
     
     print(f" {len(cation_sites)} 个阳离子位点")
@@ -134,7 +169,7 @@ def calculate_sconfig(file_path, cutoff_radius=3.8, z_tolerance=0.2, target_coor
         
         try:
             # 收集近邻阳离子位点
-            k = min(len(all_cation_coords), target_coordination * 25)
+            k = min(len(all_cation_coords), target_coordination * 3)
             distances, indices = kdtree.query(site_coords, k=k)
             
             # 筛选ab平面内的近邻位点，跳过该中心位点
@@ -223,6 +258,8 @@ def calculate_sconfig(file_path, cutoff_radius=3.8, z_tolerance=0.2, target_coor
     if valid_sites == 0:
         print("警告: 没有找到足够的有效位点进行局域环境分析")
         return {
+            'struct_name': struct_name,
+            'file_name': file_name,
             'sconfig_global': sconfig_global,
             'local_disorder': 0.0,
             'valid_sites': 0,
@@ -252,20 +289,91 @@ def calculate_sconfig(file_path, cutoff_radius=3.8, z_tolerance=0.2, target_coor
     print(f"  局域环境无序构型熵: {local_disorder:.4f} J/(mol·K)")
     
     # 4. 输出计算结果
-    print("\n" + "=" * 80)
+    print(f"结构: {struct_name}")
     print(f"组成构型熵 (S_config_global): {sconfig_global:.4f} J/(mol·K)")
     print(f"局域环境无序构型熵 (S_config_local): {local_disorder:.4f} J/(mol·K)")
-    print("=" * 80)
+    
     results = {
+        'struct_name': struct_name,
+        'file_name': file_name,
         'sconfig_global': sconfig_global,
         'local_disorder': local_disorder,
+        'valid_sites': valid_sites,
+        'total_sites': len(cation_sites)
     }
     
     return results
 
+def batch_process_structures():
+    """批量处理所有POSCAR文件"""
+    # 确保结构目录存在
+    if not os.path.exists(structure_dir):
+        print(f"创建结构文件目录: {structure_dir}")
+        os.makedirs(structure_dir, exist_ok=True)
+        print(f"请将POSCAR文件放置在以下目录: {structure_dir}")
+        print(f"支持的命名格式:")
+        print(f"  - POSCAR_结构名 (例如: POSCAR_perovskite)")
+        print(f"  - 结构名_POSCAR (例如: perovskite_POSCAR)")
+        print(f"  - POSCAR (单个文件)")
+        return {}
+    
+    # 查找所有POSCAR文件
+    poscar_files = find_poscar_files(structure_dir)
+    
+    if not poscar_files:
+        print(f"在目录 {structure_dir} 中未找到POSCAR文件")
+        print(f"当前工作目录: {work_path}")
+        print(f"查找的目录: {structure_dir}")
+        return {}
+    
+    print(f"找到 {len(poscar_files)} 个POSCAR文件:")
+    for i, file_path in enumerate(poscar_files, 1):
+        print(f"  {i}. {os.path.basename(file_path)}")
+    
+    all_results = {}
+    for file_path in poscar_files:
+        try:
+            print(f"\n{'-'*60}")
+            print(f" {os.path.basename(file_path)}")
+            result = calculate_sconfig(file_path, cutoff_radius=3.8, z_tolerance=0.2, target_coordination=6)
+            if result:
+                all_results[result['struct_name']] = result
+        except Exception as e:
+            file_name = os.path.basename(file_path)
+            print(f"处理文件 {file_name} 时出错: {e}")
+            continue
+    
+    return all_results
+
+def print_summary(all_results):
+    """处理结果汇总"""
+    if not all_results:
+        print("\n没有成功处理任何结构文件")
+        return
+    
+    print("="*100)
+    print(f"{'结构名称':<20} {'文件名':<25} {'组成构型熵':<15} {'局域环境熵':<15} {'有效位点':<10}")
+    print("-"*100)
+    
+    for struct_name, result in all_results.items():
+        print(f"{struct_name:<20} {result['file_name']:<25} "
+              f"{result['sconfig_global']:.4f} J/(mol·K)  "
+              f"{result['local_disorder']:.4f} J/(mol·K)  "
+              f"{result['valid_sites']}/{result['total_sites']}")
+    
+    print("-"*100)
+
 # 调用函数
 if __name__ == "__main__":
-    results = calculate_sconfig(file_path, cutoff_radius=3.8, z_tolerance=0.2, target_coordination=6)
+    print(f"工作目录: {work_path}")
+    print(f"结构文件目录: {structure_dir}")
     
-    # 可选：保存结果到文件
-    print(f"\n分析完成！结果已返回，包含 {len(results)} 个分析指标。")
+    all_results = batch_process_structures()
+    print_summary(all_results)
+    
+    # 如果没有任何结果，提供更多帮助信息
+    if not all_results:
+        print(f"\n请确保:")
+        print(f"1. 在 {structure_dir} 目录中放置了POSCAR文件")
+        print(f"2. 文件命名符合支持的格式")
+        print(f"3. 如果使用Jupyter Notebook，可能需要重启内核后运行")
